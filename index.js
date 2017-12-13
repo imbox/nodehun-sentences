@@ -6,7 +6,12 @@ var async    = require('async');
 
 module.exports = checkChunk;
 
-function checkChunk(nodehun, chunk, callback) {
+function checkChunk(nodehun, chunk, opts, callback) {
+    if (typeof opts === 'function') {
+      callback = opts;
+      opts = {};
+    }
+
     if (!nodehun || typeof nodehun.spellSuggestions !== 'function') {
         return callback(new TypeError(
             'First argument to nodehun-sentences must be an instance of nodehun'
@@ -22,7 +27,7 @@ function checkChunk(nodehun, chunk, callback) {
         return i && i.length > 1;
     });
 
-    var wordCheck = partial(checkWord)(nodehun);
+    var wordCheck = partial(checkWord)(nodehun, opts);
     async.map(words, wordCheck, function(err, results) {
         if (err) {
             return callback(err);
@@ -56,10 +61,30 @@ function populatePosition(text, entry) {
     return entry;
 }
 
-function checkWord(nodehun, word, callback) {
+function checkWord(nodehun, opts, word, callback) {
+    if (opts.cache) {
+        var cached = opts.cache.get(word);
+        if (cached && cached === true) {
+            return process.nextTick(callback, null);
+        } else if (cached) {
+            return process.nextTick(callback, null, {
+                word: word,
+                suggestions: cached
+            });
+        }
+    }
+
     nodehun.spellSuggestions(word, function(err, correct, suggestions) {
-        if (err || correct) {
+        if (err) {
             return callback(err);
+        }
+
+        if (opts.cache) {
+            opts.cache.set(word, correct || suggestions);
+        }
+
+        if (correct) {
+          return callback(null);
         }
 
         callback(undefined, {
