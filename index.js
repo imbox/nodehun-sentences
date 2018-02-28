@@ -65,9 +65,9 @@ function checkWord(nodehun, opts, word, callback) {
     if (opts.cache) {
         var cached = opts.cache.get(word);
         if (cached && cached === true) {
-            return process.nextTick(callback, null);
+            return setImmediate(callback, null);
         } else if (cached) {
-            return process.nextTick(callback, null, {
+            return setImmediate(callback, null, {
                 word: word,
                 suggestions: cached
             });
